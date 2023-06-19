@@ -1,5 +1,7 @@
-ols.json
+/.vs/
+/.idea/
+/out/
 
-/out/*
+ols.json
 callisto-sandbox.exe
 callisto-sandbox.pdb

@@ -4,7 +4,9 @@ import "callisto"
 import "core:log"
 
 main :: proc(){
-    callisto.init()
+    ok := callisto.init() 
+    if !ok do return
+
     defer callisto.shutdown()
 
     context.logger = callisto.logger
