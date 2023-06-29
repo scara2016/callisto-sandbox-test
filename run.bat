@@ -1,0 +1,1 @@
+odin run . -debug -out:"./out/callisto-sandbox.exe" -o:"none"
