@@ -10,7 +10,7 @@ import "vendor:glfw"
 
 
 main :: proc(){
-    if callisto.init() == false do return 
+    ok := callisto.init(); if !ok do return
     defer callisto.shutdown()
     context.logger = callisto.logger
 
