@@ -1,12 +1,8 @@
 package cal_sandbox
 
-import "callisto"
-import "callisto/input"
 import "core:log"
-
-// temp
-import "vendor:glfw"
-
+import "callisto"
+import cr "callisto/engine/renderer"
 
 
 main :: proc(){
@@ -21,4 +17,5 @@ main :: proc(){
 
 loop :: proc() {
     // gameplay code here
+    cr.cmd_draw_frame()
 }
