@@ -6,7 +6,6 @@ import "core:mem"
 import cal "callisto"
 import "callisto/input"
 import cg "callisto/graphics"
-import cr "callisto/renderer"
 
 // Temp frame timer
 frame_stopwatch: time.Stopwatch = {}
@@ -14,12 +13,12 @@ delta_time: f64 = {}
 // ================
 
 
-Color_Vertex :: struct #align 4 {
-    position:   [3]f32,
+Color_Vertex :: struct #align 4 {   // struct typedef.
+    position:   [3]f32,             // Align directive is just a precaution
     color:      [3]f32,
 }
 
-triangle_verts := []Color_Vertex {
+verts: []Color_Vertex = {
     {{0,     -0.5,   0.0},     {1, 1, 0}},
     {{0.5,   0.5,    0.0},     {0, 1, 0}},
     {{-0.5,  0.5,    0.0},     {0, 0, 1}},
@@ -51,16 +50,16 @@ main :: proc(){
     defer cal.shutdown()
     context.logger = cal.logger
 
-    color_shader_desc := cg.Shader_Description {
+    color_shader_desc: cg.Shader_Description = {
+        vertex_typeid =         typeid_of(Color_Vertex),
         vertex_shader_path =    "callisto/assets/shaders/vert_color.vert.spv",
         fragment_shader_path =  "callisto/assets/shaders/vert_color.frag.spv",
-        vertex_typeid =         typeid_of(Color_Vertex),
     }
     
-    ok = cr.create_shader(&color_shader_desc, &color_shader); if !ok {time.sleep(5 * time.Second); return}
-    defer cr.destroy_shader(&color_shader)
-    ok = cr.create_vertex_buffer(triangle_verts, &triangle_vert_buffer); if !ok {time.sleep(5 * time.Second); return}
-    defer cr.destroy_vertex_buffer(&triangle_vert_buffer)
+    ok = cg.create_shader(&color_shader_desc, &color_shader); if !ok {time.sleep(5 * time.Second); return}
+    defer cg.destroy_shader(color_shader)
+    ok = cg.create_vertex_buffer(verts, &triangle_vert_buffer); if !ok {time.sleep(5 * time.Second); return}
+    defer cg.destroy_vertex_buffer(triangle_vert_buffer)
 
     for cal.should_loop() {
         // Temp frame timer
@@ -86,12 +85,12 @@ main :: proc(){
 
 loop :: proc() {
     // gameplay code here
-    cr.cmd_record()
-    cr.cmd_begin_render_pass()
-    cr.cmd_bind_shader(&color_shader)
-    cr.cmd_draw(&triangle_vert_buffer)
-    cr.cmd_end_render_pass()
-    cr.cmd_present()
+    cg.cmd_record()
+    cg.cmd_begin_render_pass()
+    cg.cmd_bind_shader(color_shader)
+    cg.cmd_draw(triangle_vert_buffer)
+    cg.cmd_end_render_pass()
+    cg.cmd_present()
     // log.infof("{:2.6f} : {:i}fps", delta_time, int(1 / delta_time))
 
 }
