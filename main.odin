@@ -12,22 +12,14 @@ frame_stopwatch: time.Stopwatch = {}
 delta_time: f64 = {}
 // ================
 
-
-// Color_Vertex :: struct #align 4 {   // struct typedef.
-//     position:   [3]f32,             // Align directive is just a precaution
-//     color:      [3]f32,
-// }
-
-// verts: []Color_Vertex = {
-
-//     {{0,     -0.5,   0.0},     {1, 1, 0}},
-//     {{0.5,   0.5,    0.0},     {0, 1, 0}},
-//     {{-0.5,  0.5,    0.0},     {0, 0, 1}},
-// }
-
+Uniform_Buffer_Object :: struct #align 4 {
+    model   : matrix[4, 4]f32,
+    view    : matrix[4, 4]f32,
+    proj    : matrix[4, 4]f32,
+}
 UV_Vertex :: struct #align 4 {
-    position:   [3]f32,
-    uv:         [2]f32,
+    position    : [3]f32,
+    uv          : [2]f32,
 }
 
 rect_verts: []UV_Vertex = {
@@ -42,11 +34,11 @@ rect_indices: []u32 = {
     1, 2, 3, 
 }
 
-sprite_shader: cg.Shader
-rect_mesh: cg.Mesh
+sprite_uniform_data : Uniform_Buffer_Object
 
-// color_shader: cg.Shader
-// triangle_vert_buffer: cg.Vertex_Buffer
+sprite_shader       : cg.Shader
+sprite_material     : cg.Material_Instance
+rect_mesh           : cg.Mesh
 
 main :: proc(){
     // Memory leak detection
@@ -69,25 +61,22 @@ main :: proc(){
     defer cal.shutdown()
     context.logger = cal.logger
 
-    // color_shader_desc: cg.Shader_Description = {
-    //     vertex_typeid =         typeid_of(Color_Vertex),
-    //     vertex_shader_path =    "callisto/assets/shaders/vert_color.vert.spv",
-    //     fragment_shader_path =  "callisto/assets/shaders/vert_color.frag.spv",
-    // }
-
-    // ok = cg.create_shader(&color_shader_desc, &color_shader); if !ok {time.sleep(5 * time.Second); return}
-    // defer cg.destroy_shader(color_shader)
-    // ok = cg.create_vertex_buffer(verts, &triangle_vert_buffer); if !ok {time.sleep(5 * time.Second); return}
-    // defer cg.destroy_vertex_buffer(triangle_vert_buffer)
-
     sprite_shader_desc: cg.Shader_Description = {
-        vertex_typeid =         typeid_of(UV_Vertex),
-        vertex_shader_path =    "callisto/assets/shaders/sprite_unlit.vert.spv",
-        fragment_shader_path =    "callisto/assets/shaders/sprite_unlit.frag.spv",
+        vertex_typeid           = typeid_of(UV_Vertex),
+        uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
+        vertex_shader_path      = "callisto/assets/shaders/sprite_unlit.vert.spv",
+        fragment_shader_path    = "callisto/assets/shaders/sprite_unlit.frag.spv",
     }
-    ok = cg.create_shader(&sprite_shader_desc, &sprite_shader); if !ok {time.sleep(5 * time.Second); return }
+    ok = cg.create_shader(&sprite_shader_desc, &sprite_shader); if !ok do return
     defer cg.destroy_shader(sprite_shader)
-    ok = cg.create_mesh(rect_verts, rect_indices, &rect_mesh); if !ok {time.sleep(5 * time.Second); return }
+
+    // in progress
+    ok = cg.create_material_instance(sprite_shader, &sprite_material); if !ok do return
+    defer cg.destroy_material_instance(sprite_material)
+    // ===========
+
+
+    ok = cg.create_mesh(rect_verts, rect_indices, &rect_mesh); if !ok do return
     defer cg.destroy_mesh(rect_mesh)
 
 
@@ -107,11 +96,14 @@ main :: proc(){
 
 loop :: proc() {
     // gameplay code here
+
+
+    cg.upload_material_uniforms(sprite_material, &sprite_uniform_data)
+
     cg.cmd_record()
     cg.cmd_begin_render_pass()
-    // cg.cmd_bind_shader(color_shader)
-    // cg.cmd_draw(triangle_vert_buffer)
-    cg.cmd_bind_shader(sprite_shader)
+    cg.cmd_bind_shader(sprite_shader) // TODO: replace with bind material
+    // cg.cmd_bind_material(sprite_material)
     cg.cmd_draw(rect_mesh)
     cg.cmd_end_render_pass()
     cg.cmd_present()
