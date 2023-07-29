@@ -3,19 +3,21 @@ package cal_sandbox
 import "core:log"
 import "core:time"
 import "core:mem"
+import "core:math/linalg"
 import cal "callisto"
 import "callisto/input"
 import cg "callisto/graphics"
 
 // Temp frame timer
 frame_stopwatch: time.Stopwatch = {}
-delta_time: f64 = {}
+delta_time: f32 = {}
+delta_time_f64: f64 = {}
 // ================
 
 Uniform_Buffer_Object :: struct #align 4 {
-    model   : matrix[4, 4]f32,
-    view    : matrix[4, 4]f32,
-    proj    : matrix[4, 4]f32,
+    model   : linalg.Matrix4x4f32,
+    view    : linalg.Matrix4x4f32,
+    proj    : linalg.Matrix4x4f32,
 }
 UV_Vertex :: struct #align 4 {
     position    : [3]f32,
@@ -34,11 +36,18 @@ rect_indices: []u32 = {
     1, 2, 3, 
 }
 
-sprite_uniform_data : Uniform_Buffer_Object
+sprite_uniform_data : Uniform_Buffer_Object = {
+    model = linalg.MATRIX4F32_IDENTITY,
+    view = linalg.MATRIX4F32_IDENTITY,
+    proj = linalg.MATRIX4F32_IDENTITY,
+}
 
 sprite_shader       : cg.Shader
 sprite_material     : cg.Material_Instance
 rect_mesh           : cg.Mesh
+
+
+spin_speed: f32 = 0.5 * linalg.PI
 
 main :: proc(){
     // Memory leak detection
@@ -61,6 +70,7 @@ main :: proc(){
     defer cal.shutdown()
     context.logger = cal.logger
 
+    // TODO: auto generate at shader compile time
     sprite_shader_desc: cg.Shader_Description = {
         vertex_typeid           = typeid_of(UV_Vertex),
         uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
@@ -82,7 +92,8 @@ main :: proc(){
 
     for cal.should_loop() {
         // Temp frame timer
-        delta_time = time.duration_seconds(time.stopwatch_duration(frame_stopwatch))
+        delta_time_f64 = time.duration_seconds(time.stopwatch_duration(frame_stopwatch))
+        delta_time = f32(delta_time_f64)
         time.stopwatch_reset(&frame_stopwatch)
         time.stopwatch_start(&frame_stopwatch)
         // ================
@@ -97,13 +108,13 @@ main :: proc(){
 loop :: proc() {
     // gameplay code here
 
-
+    sprite_uniform_data.model *= linalg.matrix4_rotate_f32(spin_speed * delta_time, linalg.VECTOR3F32_Y_AXIS)
+    // cg.upload_camera_uniforms(viewproj_matrix, &camera_uniform_buffer)
     cg.upload_material_uniforms(sprite_material, &sprite_uniform_data)
 
     cg.cmd_record()
     cg.cmd_begin_render_pass()
-    cg.cmd_bind_shader(sprite_shader) // TODO: replace with bind material
-    // cg.cmd_bind_material(sprite_material)
+    cg.cmd_bind_material_instance(sprite_material)
     cg.cmd_draw(rect_mesh)
     cg.cmd_end_render_pass()
     cg.cmd_present()
