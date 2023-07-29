@@ -7,6 +7,7 @@ import "core:math/linalg"
 import cal "callisto"
 import "callisto/input"
 import cg "callisto/graphics"
+import "callisto/config"
 
 // Temp frame timer
 frame_stopwatch: time.Stopwatch = {}
@@ -77,14 +78,16 @@ main :: proc(){
         vertex_shader_path      = "callisto/assets/shaders/sprite_unlit.vert.spv",
         fragment_shader_path    = "callisto/assets/shaders/sprite_unlit.frag.spv",
     }
+
     ok = cg.create_shader(&sprite_shader_desc, &sprite_shader); if !ok do return
     defer cg.destroy_shader(sprite_shader)
 
-    // in progress
+    aspect_ratio := f32(config.WINDOW_WIDTH / config.WINDOW_HEIGHT)
+    sprite_uniform_data.proj = linalg.matrix4_perspective_f32(30, aspect_ratio, 0.1, 1000.0)
+    sprite_uniform_data.view = linalg.matrix4_translate_f32({0, 0, -3})
+
     ok = cg.create_material_instance(sprite_shader, &sprite_material); if !ok do return
     defer cg.destroy_material_instance(sprite_material)
-    // ===========
-
 
     ok = cg.create_mesh(rect_verts, rect_indices, &rect_mesh); if !ok do return
     defer cg.destroy_mesh(rect_mesh)
