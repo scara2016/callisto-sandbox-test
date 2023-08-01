@@ -46,7 +46,7 @@ sprite_uniform_data : Uniform_Buffer_Object = {
 sprite_shader       : cg.Shader
 sprite_material     : cg.Material_Instance
 rect_mesh           : cg.Mesh
-
+window_texture      : cg.Texture
 
 spin_speed: f32 = 0.5 * linalg.PI
 
@@ -67,24 +67,27 @@ main :: proc(){
     }
     // =====================
 
+
     ok := cal.init(); if !ok do return
     defer cal.shutdown()
     context.logger = cal.logger
 
     // TODO: auto generate at shader compile time
-    sprite_shader_desc: cg.Shader_Description = {
+    sprite_shader_desc := cg.Shader_Description {
         vertex_typeid           = typeid_of(UV_Vertex),
         uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
         vertex_shader_path      = "callisto/assets/shaders/sprite_unlit.vert.spv",
         fragment_shader_path    = "callisto/assets/shaders/sprite_unlit.frag.spv",
+        cull_mode               = .NONE, // .BACK by default
+    }
+
+    window_texture_desc := cg.Texture_Description {
+        image_path = "callisto/assets/textures/prototype/dark_texture_12.png",
+        color_space = .SRGB,
     }
 
     ok = cg.create_shader(&sprite_shader_desc, &sprite_shader); if !ok do return
     defer cg.destroy_shader(sprite_shader)
-
-    aspect_ratio := f32(config.WINDOW_WIDTH / config.WINDOW_HEIGHT)
-    sprite_uniform_data.proj = linalg.matrix4_perspective_f32(30, aspect_ratio, 0.1, 1000.0)
-    sprite_uniform_data.view = linalg.matrix4_translate_f32({0, 0, -3})
 
     ok = cg.create_material_instance(sprite_shader, &sprite_material); if !ok do return
     defer cg.destroy_material_instance(sprite_material)
@@ -92,14 +95,25 @@ main :: proc(){
     ok = cg.create_mesh(rect_verts, rect_indices, &rect_mesh); if !ok do return
     defer cg.destroy_mesh(rect_mesh)
 
+    ok = cg.create_texture(&window_texture_desc, &window_texture); if !ok do return
+    defer cg.destroy_texture(window_texture)
+
+
+    aspect_ratio := f32(config.WINDOW_WIDTH) / f32(config.WINDOW_HEIGHT)
+    sprite_uniform_data.proj = linalg.matrix4_perspective_f32(120, aspect_ratio, 0.1, 1000, true)
+    // sprite_uniform_data.proj = linalg.matrix_ortho3d_f32(-aspect_ratio, aspect_ratio, -1, 1, 0.1, 1000)
+    sprite_uniform_data.view = linalg.matrix4_translate_f32({0, 0, -10})
+
 
     for cal.should_loop() {
+
         // Temp frame timer
         delta_time_f64 = time.duration_seconds(time.stopwatch_duration(frame_stopwatch))
         delta_time = f32(delta_time_f64)
         time.stopwatch_reset(&frame_stopwatch)
         time.stopwatch_start(&frame_stopwatch)
         // ================
+
 
         loop()
         // break
@@ -109,8 +123,6 @@ main :: proc(){
 
 
 loop :: proc() {
-    // gameplay code here
-
     sprite_uniform_data.model *= linalg.matrix4_rotate_f32(spin_speed * delta_time, linalg.VECTOR3F32_Y_AXIS)
     // cg.upload_camera_uniforms(viewproj_matrix, &camera_uniform_buffer)
     cg.upload_material_uniforms(sprite_material, &sprite_uniform_data)
