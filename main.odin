@@ -100,7 +100,7 @@ main :: proc(){
 
 
     aspect_ratio := f32(config.WINDOW_WIDTH) / f32(config.WINDOW_HEIGHT)
-    sprite_uniform_data.proj = linalg.matrix4_perspective_f32(120, aspect_ratio, 0.1, 1000, true)
+    sprite_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.PI / 16, aspect_ratio, 0.1, 1000, true)
     // sprite_uniform_data.proj = linalg.matrix_ortho3d_f32(-aspect_ratio, aspect_ratio, -1, 1, 0.1, 1000)
     sprite_uniform_data.view = linalg.matrix4_translate_f32({0, 0, -10})
 
