@@ -2,5 +2,5 @@
 	path = callisto
 	url = git@github.com:Bazzagibbs/callisto.git
 [submodule "assets/glTF-Sample-Models"]
-	path = assets/glTF-Sample-Models
+	path = resources/glTF-Sample-Models
 	url = git@github.com:KhronosGroup/glTF-Sample-Models.git
