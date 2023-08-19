@@ -1,4 +1,4 @@
-package cal_sandbox
+package callisto_sandbox
 
 import "core:log"
 import "core:time"
@@ -10,6 +10,7 @@ import cg "callisto/graphics"
 import "callisto/config"
 import "callisto/importer"
 import "callisto/asset"
+import "callisto/util"
 
 // Temp frame timer
 frame_stopwatch: time.Stopwatch = {}
@@ -28,70 +29,82 @@ UV_Vertex :: struct #align 4 {
 }
 
 
-box_uniform_data : Uniform_Buffer_Object = {
+geo_uniform_data : Uniform_Buffer_Object = {
     model = linalg.MATRIX4F32_IDENTITY,
     view = linalg.MATRIX4F32_IDENTITY,
     proj = linalg.MATRIX4F32_IDENTITY,
 }
 
-sprite_shader       : cg.Shader
 
-box_model           : cg.Model
+geo_meshes          : []cg.Mesh
+matcap_shader       : cg.Shader
+matcap_material     : cg.Material_Instance
+matcap_texture      : cg.Texture
+
 
 main :: proc(){
-    // Memory leak detection
-    track: mem.Tracking_Allocator
-    mem.tracking_allocator_init(&track, context.allocator)
-    defer mem.tracking_allocator_destroy(&track)
-    context.allocator = mem.tracking_allocator(&track)
+    
+    when ODIN_DEBUG {
+        context.logger = util.create_logger()
+        defer util.destroy_logger(context.logger)
 
-    defer {
-        for _, leak in track.allocation_map {
-            log.errorf("%v leaked %v bytes\n", leak.location, leak.size)
-        }
-        for bad_free in track.bad_free_array {
-            log.errorf("%v allocation %p was freed badly\n", bad_free.location, bad_free.memory)
-        }
+        track := util.create_tracking_allocator()
+        context.allocator = mem.tracking_allocator(&track)
+        defer util.destroy_tracking_allocator(&track)
     }
-    // =====================
 
+    run_app()
+}
 
-    ok := cal.init(); if !ok do return
+run_app :: proc() -> (ok: bool) {
+    cal.init() or_return
     defer cal.shutdown()
-    context.logger = cal.logger
 
     // TODO: auto generate at shader compile time
-    sprite_shader_desc := cg.Shader_Description {
-        vertex_typeid           = typeid_of(UV_Vertex),
+    matcap_shader_desc := cg.Shader_Description {
         uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
-        vertex_shader_path      = "callisto/resources/shaders/sprite_unlit.vert.spv",
-        fragment_shader_path    = "callisto/resources/shaders/sprite_unlit.frag.spv",
+        vertex_shader_path      = "callisto/resources/shaders/matcap.vert.spv",
+        fragment_shader_path    = "callisto/resources/shaders/matcap.frag.spv",
         cull_mode               = .NONE, // .BACK by default
     }
 
-    // box_model_desc := cg.Model_Description {
-    //     model_path              = "assets/glTF-Sample-Models/2.0/Triangle/glTF-Embedded/Triangle.gltf",
-    // }
-    box_mesh: asset.Mesh
-    box_material: asset.Material
-    box_mesh, box_material, ok = importer.import_gltf("callisto/resources/models/cube.gltf")
-    log.info(box_mesh)
-    defer asset.delete(&box_mesh)
-    defer asset.delete(&box_material)
+    geo_path := "resources/glTF-Sample-Models/2.0/Lantern/glTF-Binary/Lantern.glb"
+    geo_mesh_assets, geo_material_assets := importer.import_gltf(geo_path) or_return
+    defer asset.delete(&geo_mesh_assets)
+    defer asset.delete(&geo_material_assets)
 
-    ok = cg.create_shader(&sprite_shader_desc, &sprite_shader); if !ok do return
-    defer cg.destroy_shader(sprite_shader)
+    geo_meshes = make([]cg.Mesh, len(geo_mesh_assets))
+    defer delete(geo_meshes)
 
-    // cg.create_model(&box_model_desc, &box_model)
-    // defer cg.destroy_model(box_model)
+    for i in 0..<len(geo_mesh_assets) {        
+        cg.create_static_mesh(&geo_mesh_assets[i], &geo_meshes[i]) or_return
+    }
+    defer {
+        for geo_mesh in geo_meshes {
+            cg.destroy_static_mesh(geo_mesh)
+        }
+    }
 
-    camera_transform := linalg.matrix4_translate_f32({0, 0, -3})
+    cg.create_shader(&matcap_shader_desc, &matcap_shader) or_return
+    defer cg.destroy_shader(matcap_shader)
+
+    cg.create_material_instance(matcap_shader, &matcap_material) or_return
+    defer cg.destroy_material_instance(matcap_material)
+
+    matcap_texture_desc := cg.Texture_Description {
+        image_path = "callisto/resources/textures/matcap/png/basic_1.png",
+        color_space = .SRGB,
+    }
+    cg.create_texture(&matcap_texture_desc, &matcap_texture) or_return
+    defer cg.destroy_texture(matcap_texture)
+
+    cg.set_material_instance_texture(matcap_material, matcap_texture, 1)
+
+    camera_transform := linalg.matrix4_translate_f32({0, 0, -50})
 
     aspect_ratio := f32(config.WINDOW_WIDTH) / f32(config.WINDOW_HEIGHT)
-    box_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.to_radians(f32(40)), aspect_ratio, 0.1, 1000, false)
-    box_uniform_data.view = linalg.matrix4_inverse_f32(camera_transform)
-
-
+    geo_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.to_radians(f32(-40)), aspect_ratio, 0.1, 1000, false)
+    geo_uniform_data.view = linalg.matrix4_inverse_f32(camera_transform)
 
     for cal.should_loop() {
 
@@ -106,18 +119,22 @@ main :: proc(){
         loop()
         // break
     }
-    
-}
 
+    return true
+}
 
 loop :: proc() {
 
-    // cg.upload_material_uniforms(red_material, &rect_back_uniform_data)
+    geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
 
+    cg.upload_material_uniforms(matcap_material, &geo_uniform_data)
+    
     cg.cmd_record()
     cg.cmd_begin_render_pass()
-    // cg.cmd_bind_material_instance(red_material)
-    // cg.cmd_draw(rect_mesh)
+    cg.cmd_bind_material_instance(matcap_material)
+    for geo_mesh in geo_meshes {
+        cg.cmd_draw(geo_mesh)
+    }
     cg.cmd_end_render_pass()
     cg.cmd_present()
     // log.infof("{:2.6f} : {:i}fps", delta_time, int(1 / delta_time))

@@ -1,6 +1,6 @@
 [submodule "callisto"]
 	path = callisto
 	url = git@github.com:Bazzagibbs/callisto.git
-[submodule "assets/glTF-Sample-Models"]
-	path = resources/glTF-Sample-Models
+[submodule "resources/glTF-Sample-Models"]
+	path = resources/models/glTF-Sample-Models
 	url = git@github.com:KhronosGroup/glTF-Sample-Models.git
