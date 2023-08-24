@@ -10,8 +10,7 @@ import cg "callisto/graphics"
 import "callisto/config"
 import "callisto/importer"
 import "callisto/asset"
-import "callisto/util"
-import "core:prof/spall"
+import "callisto/debug"
 
 // Temp frame timer
 frame_stopwatch: time.Stopwatch = {}
@@ -46,24 +45,24 @@ matcap_texture      : cg.Texture
 main :: proc(){
     
     when ODIN_DEBUG {
-        context.logger = util.create_logger()
-        defer util.destroy_logger(context.logger)
+        context.logger = debug.create_logger()
+        defer debug.destroy_logger(context.logger)
 
-        track := util.create_tracking_allocator()
+        track := debug.create_tracking_allocator()
         context.allocator = mem.tracking_allocator(&track)
-        defer util.destroy_tracking_allocator(&track)
+        defer debug.destroy_tracking_allocator(&track)
     }
 
     when config.DEBUG_PROFILER_ENABLED {
-        util.create_profiler()
-        defer util.destroy_profiler()
+        debug.create_profiler()
+        defer debug.destroy_profiler()
     }
     
     run_app()
 }
 
 run_app :: proc() -> (ok: bool) {
-    util.profile_scope()
+    debug.profile_scope()
     
     cal.init() or_return
     defer cal.shutdown()
@@ -132,7 +131,7 @@ run_app :: proc() -> (ok: bool) {
 }
 
 loop :: proc() {
-    util.profile_scope()
+    debug.profile_scope()
 
     geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
 
