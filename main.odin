@@ -11,6 +11,7 @@ import "callisto/config"
 import "callisto/importer"
 import "callisto/asset"
 import "callisto/util"
+import "core:prof/spall"
 
 // Temp frame timer
 frame_stopwatch: time.Stopwatch = {}
@@ -18,12 +19,12 @@ delta_time: f32 = {}
 delta_time_f64: f64 = {}
 // ================
 
-Uniform_Buffer_Object :: struct #align 4 {
+Uniform_Buffer_Object :: struct #align(4) {
     model   : linalg.Matrix4x4f32,
     view    : linalg.Matrix4x4f32,
     proj    : linalg.Matrix4x4f32,
 }
-UV_Vertex :: struct #align 4 {
+UV_Vertex :: struct #align(4) {
     position    : [3]f32,
     uv          : [2]f32,
 }
@@ -53,10 +54,17 @@ main :: proc(){
         defer util.destroy_tracking_allocator(&track)
     }
 
+    when config.DEBUG_PROFILER_ENABLED {
+        util.create_profiler()
+        defer util.destroy_profiler()
+    }
+    
     run_app()
 }
 
 run_app :: proc() -> (ok: bool) {
+    util.profile_scope()
+    
     cal.init() or_return
     defer cal.shutdown()
 
@@ -68,7 +76,7 @@ run_app :: proc() -> (ok: bool) {
         cull_mode               = .NONE, // .BACK by default
     }
 
-    geo_path := "resources/glTF-Sample-Models/2.0/Lantern/glTF-Binary/Lantern.glb"
+    geo_path := "resources/models/glTF-Sample-Models/2.0/Lantern/glTF-Binary/Lantern.glb"
     geo_mesh_assets, geo_material_assets := importer.import_gltf(geo_path) or_return
     defer asset.delete(&geo_mesh_assets)
     defer asset.delete(&geo_material_assets)
@@ -124,6 +132,7 @@ run_app :: proc() -> (ok: bool) {
 }
 
 loop :: proc() {
+    util.profile_scope()
 
     geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
 
