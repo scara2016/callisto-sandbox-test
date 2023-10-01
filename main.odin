@@ -70,15 +70,19 @@ run_app :: proc() -> (ok: bool) {
     // TODO: auto generate at shader compile time
     matcap_shader_desc := cg.Shader_Description {
         uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
+        // vertex_shader_path      = "callisto/resources/shaders/opaque.vert.spv",
+        // fragment_shader_path    = "callisto/resources/shaders/opaque.frag.spv",
         vertex_shader_path      = "callisto/resources/shaders/matcap.vert.spv",
         fragment_shader_path    = "callisto/resources/shaders/matcap.frag.spv",
-        cull_mode               = .NONE, // .BACK by default
+        // cull_mode               = .NONE,
     }
 
-    geo_path := "resources/models/glTF-Sample-Models/2.0/Lantern/glTF-Binary/Lantern.glb"
-    geo_mesh_assets, geo_material_assets := importer.import_gltf(geo_path) or_return
-    defer asset.delete(&geo_mesh_assets)
-    defer asset.delete(&geo_material_assets)
+    // geo_path := "resources/models/glTF-Sample-Models/2.0/Suzanne/glTF/Suzanne.gltf"
+    geo_path := "resources/models/glTF-Sample-Models/2.0/Lantern/glTF/Lantern.gltf"
+    // geo_path := "resources/models/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf"
+    geo_mesh_assets, geo_material_assets, geo_textures, geo_models, geo_constructs := importer.import_gltf(geo_path) or_return
+    defer asset.delete(geo_mesh_assets)
+    // defer asset.delete(geo_material_assets)
 
     geo_meshes = make([]cg.Mesh, len(geo_mesh_assets))
     defer delete(geo_meshes)
@@ -100,6 +104,7 @@ run_app :: proc() -> (ok: bool) {
 
     matcap_texture_desc := cg.Texture_Description {
         image_path = "callisto/resources/textures/matcap/png/basic_1.png",
+        // image_path = "callisto/resources/textures/matcap/png/check_normal+y.png",
         color_space = .SRGB,
     }
     cg.create_texture(&matcap_texture_desc, &matcap_texture) or_return
@@ -110,7 +115,7 @@ run_app :: proc() -> (ok: bool) {
     camera_transform := linalg.matrix4_translate_f32({0, 0, -50})
 
     aspect_ratio := f32(config.WINDOW_WIDTH) / f32(config.WINDOW_HEIGHT)
-    geo_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.to_radians(f32(-40)), aspect_ratio, 0.1, 1000, false)
+    geo_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.to_radians(f32(-40)), aspect_ratio, 0.1, 10000, false)
     geo_uniform_data.view = linalg.matrix4_inverse_f32(camera_transform)
 
     for cal.should_loop() {
