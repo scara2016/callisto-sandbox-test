@@ -8,7 +8,6 @@ import cal "callisto"
 import "callisto/input"
 import cg "callisto/graphics"
 import "callisto/config"
-import "callisto/importer"
 import "callisto/asset"
 import "callisto/debug"
 
@@ -18,16 +17,11 @@ delta_time: f32 = {}
 delta_time_f64: f64 = {}
 // ================
 
-Uniform_Buffer_Object :: struct #align(4) {
+Uniform_Buffer_Object :: struct {
     model   : linalg.Matrix4x4f32,
     view    : linalg.Matrix4x4f32,
     proj    : linalg.Matrix4x4f32,
 }
-UV_Vertex :: struct #align(4) {
-    position    : [3]f32,
-    uv          : [2]f32,
-}
-
 
 geo_uniform_data : Uniform_Buffer_Object = {
     model = linalg.MATRIX4F32_IDENTITY,
@@ -40,7 +34,6 @@ geo_meshes          : []cg.Mesh
 matcap_shader       : cg.Shader
 matcap_material     : cg.Material_Instance
 matcap_texture      : cg.Texture
-
 
 main :: proc(){
     
@@ -67,8 +60,53 @@ run_app :: proc() -> (ok: bool) {
     cal.init() or_return
     defer cal.shutdown()
 
-    // TODO: auto generate at shader compile time
-    matcap_shader_desc := cg.Shader_Description {
+
+    // Load mesh assets
+    // ////////////////
+    mesh_paths := []string {
+        "resources/test/Suzanne.gali",
+        // "resources/test/LanternPole_Body.gali",
+        // "resources/test/LanternPole_Chain.gali",
+        // "resources/test/LanternPole_Lantern.gali",
+    }
+
+    mesh_assets := make([]asset.Mesh, 3)
+    defer delete(mesh_assets)
+
+    for mesh_path, i in mesh_paths {
+        mesh_assets[i] = asset.load(asset.Mesh, mesh_path)
+        // asset.load(asset.Mesh, mesh_uuid)
+    }
+
+    defer {
+        for _, i in mesh_assets {
+            mesh_asset := &mesh_assets[i]
+            asset.delete_mesh(mesh_asset)
+        }
+    }
+    // ////////////////
+
+    
+    // Create renderable meshes
+    // ////////////////////////
+    geo_meshes = make([]cg.Mesh, len(mesh_assets))
+    defer delete(geo_meshes)
+
+    for _, i in mesh_assets {
+        mesh_asset := &mesh_assets[i]
+        cg.create_static_mesh(mesh_asset, &geo_meshes[i]) or_return
+    }
+    defer {
+        for geo_mesh in geo_meshes {
+            cg.destroy_static_mesh(geo_mesh)
+        }
+    }
+    // ////////////////////////
+
+
+    // Create material resources
+    // /////////////////////////
+    matcap_shader_desc := cg.Shader_Description { // TODO: auto generate at shader compile time
         uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
         // vertex_shader_path      = "callisto/resources/shaders/opaque.vert.spv",
         // fragment_shader_path    = "callisto/resources/shaders/opaque.frag.spv",
@@ -76,26 +114,6 @@ run_app :: proc() -> (ok: bool) {
         fragment_shader_path    = "callisto/resources/shaders/matcap.frag.spv",
         // cull_mode               = .NONE,
     }
-
-    // geo_path := "resources/models/glTF-Sample-Models/2.0/Suzanne/glTF/Suzanne.gltf"
-    geo_path := "resources/models/glTF-Sample-Models/2.0/Lantern/glTF/Lantern.gltf"
-    // geo_path := "resources/models/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf"
-    geo_mesh_assets, geo_material_assets, geo_textures, geo_models, geo_constructs := importer.import_gltf(geo_path) or_return
-    defer asset.delete(geo_mesh_assets)
-    // defer asset.delete(geo_material_assets)
-
-    geo_meshes = make([]cg.Mesh, len(geo_mesh_assets))
-    defer delete(geo_meshes)
-
-    for i in 0..<len(geo_mesh_assets) {        
-        cg.create_static_mesh(&geo_mesh_assets[i], &geo_meshes[i]) or_return
-    }
-    defer {
-        for geo_mesh in geo_meshes {
-            cg.destroy_static_mesh(geo_mesh)
-        }
-    }
-
     cg.create_shader(&matcap_shader_desc, &matcap_shader) or_return
     defer cg.destroy_shader(matcap_shader)
 
@@ -111,26 +129,31 @@ run_app :: proc() -> (ok: bool) {
     defer cg.destroy_texture(matcap_texture)
 
     cg.set_material_instance_texture(matcap_material, matcap_texture, 1)
+    // /////////////////////////
 
-    camera_transform := linalg.matrix4_translate_f32({0, 0, -50})
+
+    // Create camera
+    // /////////////
+    camera_transform := linalg.matrix4_translate_f32({0, 0, -10})
 
     aspect_ratio := f32(config.WINDOW_WIDTH) / f32(config.WINDOW_HEIGHT)
     geo_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.to_radians(f32(-40)), aspect_ratio, 0.1, 10000, false)
     geo_uniform_data.view = linalg.matrix4_inverse_f32(camera_transform)
+    // /////////////
 
+
+    // GAME LOOP
+    // /////////
     for cal.should_loop() {
-
-        // Temp frame timer
+        // Frame timer
         delta_time_f64 = time.duration_seconds(time.stopwatch_duration(frame_stopwatch))
         delta_time = f32(delta_time_f64)
         time.stopwatch_reset(&frame_stopwatch)
         time.stopwatch_start(&frame_stopwatch)
-        // ================
-
 
         loop()
-        // break
     }
+    // /////////
 
     return true
 }
@@ -153,3 +176,4 @@ loop :: proc() {
     // log.infof("{:2.6f} : {:i}fps", delta_time, int(1 / delta_time))
 
 }
+
