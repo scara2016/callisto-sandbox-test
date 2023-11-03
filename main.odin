@@ -32,7 +32,7 @@ geo_uniform_data : Uniform_Buffer_Object = {
 
 geo_meshes          : []cg.Mesh
 matcap_shader       : cg.Shader
-matcap_material     : cg.Material_Instance
+matcap_material     : cg.Material
 matcap_texture      : cg.Texture
 
 main :: proc(){
@@ -89,46 +89,46 @@ run_app :: proc() -> (ok: bool) {
     
     // Create renderable meshes
     // ////////////////////////
-    geo_meshes = make([]cg.Mesh, len(mesh_assets))
-    defer delete(geo_meshes)
-
-    for _, i in mesh_assets {
-        mesh_asset := &mesh_assets[i]
-        cg.create_static_mesh(mesh_asset, &geo_meshes[i]) or_return
-    }
-    defer {
-        for geo_mesh in geo_meshes {
-            cg.destroy_static_mesh(geo_mesh)
-        }
-    }
+    // geo_meshes = make([]cg.Mesh, len(mesh_assets))
+    // defer delete(geo_meshes)
+    //
+    // for _, i in mesh_assets {
+    //     mesh_asset := &mesh_assets[i]
+    //     cg.create_static_mesh(mesh_asset, &geo_meshes[i]) or_return
+    // }
+    // defer {
+    //     for geo_mesh in geo_meshes {
+    //         cg.destroy_static_mesh(geo_mesh)
+    //     }
+    // }
     // ////////////////////////
 
 
     // Create material resources
     // /////////////////////////
     matcap_shader_desc := cg.Shader_Description { // TODO: auto generate at shader compile time
-        uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
+        // uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
         // vertex_shader_path      = "callisto/resources/shaders/opaque.vert.spv",
         // fragment_shader_path    = "callisto/resources/shaders/opaque.frag.spv",
         vertex_shader_path      = "callisto/resources/shaders/matcap.vert.spv",
         fragment_shader_path    = "callisto/resources/shaders/matcap.frag.spv",
         // cull_mode               = .NONE,
     }
-    cg.create_shader(&matcap_shader_desc, &matcap_shader) or_return
-    defer cg.destroy_shader(matcap_shader)
+    // matcap_shader = cg.create_shader(&matcap_shader_desc) or_return
+    // defer cg.destroy_shader(matcap_shader)
+    //
+    // matcap_material = cg.create_material(matcap_shader) or_return
+    // defer cg.destroy_material(matcap_material)
+    //
+    // matcap_texture_desc := cg.Texture_Description {
+    //     image_path = "callisto/resources/textures/matcap/png/basic_1.png",
+    //     // image_path = "callisto/resources/textures/matcap/png/check_normal+y.png",
+    //     color_space = .SRGB,
+    // }
+    // matcap_texture = cg.create_texture(&matcap_texture_desc) or_return
+    // defer cg.destroy_texture(matcap_texture)
 
-    cg.create_material_instance(matcap_shader, &matcap_material) or_return
-    defer cg.destroy_material_instance(matcap_material)
-
-    matcap_texture_desc := cg.Texture_Description {
-        image_path = "callisto/resources/textures/matcap/png/basic_1.png",
-        // image_path = "callisto/resources/textures/matcap/png/check_normal+y.png",
-        color_space = .SRGB,
-    }
-    cg.create_texture(&matcap_texture_desc, &matcap_texture) or_return
-    defer cg.destroy_texture(matcap_texture)
-
-    cg.set_material_instance_texture(matcap_material, matcap_texture, 1)
+    // cg.set_material_texture(matcap_material, matcap_texture, 1)
     // /////////////////////////
 
 
@@ -161,19 +161,19 @@ run_app :: proc() -> (ok: bool) {
 loop :: proc() {
     debug.profile_scope()
 
-    geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
+    // geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
 
-    cg.upload_material_uniforms(matcap_material, &geo_uniform_data)
-    
-    cg.cmd_record()
-    cg.cmd_begin_render_pass()
-    cg.cmd_bind_material_instance(matcap_material)
-    for geo_mesh in geo_meshes {
-        cg.cmd_draw(geo_mesh)
-    }
-    cg.cmd_end_render_pass()
-    cg.cmd_present()
-    // log.infof("{:2.6f} : {:i}fps", delta_time, int(1 / delta_time))
+    // cg.upload_material_uniforms(matcap_material, &geo_uniform_data)
+    // 
+    // cg.cmd_record()
+    // cg.cmd_begin_render_pass()
+    // cg.cmd_bind_material(matcap_material)
+    // for geo_mesh in geo_meshes {
+    //     cg.cmd_draw(geo_mesh)
+    // }
+    // cg.cmd_end_render_pass()
+    // cg.cmd_present()
+    log.infof("{:2.6f} : {:i}fps", delta_time, int(1 / delta_time))
 
 }
 
