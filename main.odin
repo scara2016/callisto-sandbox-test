@@ -29,6 +29,7 @@ geo_uniform_data : Uniform_Buffer_Object = {
     proj = linalg.MATRIX4F32_IDENTITY,
 }
 
+engine              : cal.Engine_Context
 
 geo_meshes          : []cg.Mesh
 matcap_shader       : cg.Shader
@@ -57,8 +58,8 @@ main :: proc(){
 run_app :: proc() -> (ok: bool) {
     debug.profile_scope()
     
-    cal.init() or_return
-    defer cal.shutdown()
+    cal.init(&engine) or_return
+    defer cal.shutdown(&engine)
 
 
     // Load mesh assets
