@@ -175,6 +175,7 @@ loop :: proc() {
     // cg.cmd_end_render_pass()
     // cg.cmd_present()
     log.infof("{:2.6f} : {:i}fps", delta_time, int(1 / delta_time))
+    // log.info(input.get_key(.Space))
 
 }
 
