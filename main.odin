@@ -107,8 +107,8 @@ run_app :: proc() -> (ok: bool) {
 
     // Create material resources
     // /////////////////////////
-    matcap_shader_desc := cg.Shader_Description { // TODO: auto generate at shader compile time
-        // uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
+    matcap_shader_desc := cg.Shader_Description { // auto generate at shader compile time?
+tr        // uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
         // vertex_shader_path      = "callisto/resources/shaders/opaque.vert.spv",
         // fragment_shader_path    = "callisto/resources/shaders/opaque.frag.spv",
         vertex_shader_path      = "callisto/resources/shaders/matcap.vert.spv",
@@ -174,7 +174,7 @@ loop :: proc() {
     // }
     // cg.cmd_end_render_pass()
     // cg.cmd_present()
-    log.infof("{:2.6f} : {:i}fps", delta_time, int(1 / delta_time))
+    // log.infof("{:2.6f} : {:i}fps", delta_time, int(1 / delta_time))
     // log.info(input.get_key(.Space))
 
 }
