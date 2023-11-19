@@ -4,6 +4,8 @@ import "core:log"
 import "core:time"
 import "core:mem"
 import "core:math/linalg"
+import "core:math"
+import "core:os"
 import cal "callisto"
 import "callisto/input"
 import cg "callisto/graphics"
@@ -32,9 +34,10 @@ geo_uniform_data : Uniform_Buffer_Object = {
 engine              : cal.Engine_Context
 
 geo_meshes          : []cg.Mesh
-matcap_shader       : cg.Shader
-matcap_material     : cg.Material
-matcap_texture      : cg.Texture
+// matcap_shader       : cg.Shader
+// matcap_material     : cg.Material
+// matcap_texture      : cg.Texture
+tri_shader          : cg.Shader
 
 main :: proc(){
     
@@ -95,7 +98,7 @@ run_app :: proc() -> (ok: bool) {
     //
     // for _, i in mesh_assets {
     //     mesh_asset := &mesh_assets[i]
-    //     cg.create_static_mesh(mesh_asset, &geo_meshes[i]) or_return
+    //     geo_meshes[i] = cg.create_static_mesh(mesh_asset) or_return
     // }
     // defer {
     //     for geo_mesh in geo_meshes {
@@ -107,14 +110,20 @@ run_app :: proc() -> (ok: bool) {
 
     // Create material resources
     // /////////////////////////
-    matcap_shader_desc := cg.Shader_Description { // auto generate at shader compile time?
-tr        // uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
-        // vertex_shader_path      = "callisto/resources/shaders/opaque.vert.spv",
-        // fragment_shader_path    = "callisto/resources/shaders/opaque.frag.spv",
-        vertex_shader_path      = "callisto/resources/shaders/matcap.vert.spv",
-        fragment_shader_path    = "callisto/resources/shaders/matcap.frag.spv",
+    // matcap_shader_desc := cg.Shader_Description { // auto generate at shader compile time?
+        // material_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
         // cull_mode               = .NONE,
-    }
+    // }
+    // vertex_shader_path      = "callisto/resources/shaders/opaque.vert.spv",
+    // fragment_shader_path    = "callisto/resources/shaders/opaque.frag.spv",
+
+    // matcap_shader_desc.vertex_shader_data, _   = os.read_entire_file_from_filename("callisto/resources/shaders/opaque.vert.spv")
+    // matcap_shader_desc.fragment_shader_data, _ = os.read_entire_file_from_filename("callisto/resources/shaders/opaque.frag.spv")
+    // matcap_shader_desc.vertex_shader_data, _   = os.read_entire_file_from_filename("callisto/resources/shaders/matcap.vert.spv")
+    // matcap_shader_desc.fragment_shader_data, _ = os.read_entire_file_from_filename("callisto/resources/shaders/matcap.frag.spv")
+    // defer delete(matcap_shader_desc.vertex_shader_data)
+    // defer delete(matcap_shader_desc.fragment_shader_data)
+
     // matcap_shader = cg.create_shader(&matcap_shader_desc) or_return
     // defer cg.destroy_shader(matcap_shader)
     //
@@ -130,6 +139,19 @@ tr        // uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
     // defer cg.destroy_texture(matcap_texture)
 
     // cg.set_material_texture(matcap_material, matcap_texture, 1)
+    
+
+    tri_shader_desc := cg.Shader_Description {
+        vertex_shader_data = #load("callisto/resources/shaders/triangle.vert.spv"),
+        fragment_shader_data = #load("callisto/resources/shaders/triangle.frag.spv"),
+        // cull_mode = .NONE,
+    }
+
+    tri_shader = cg.create_shader(&tri_shader_desc) or_return
+    defer {
+        cg.wait_until_idle()
+        cg.destroy_shader(tri_shader)
+    }
     // /////////////////////////
 
 
@@ -159,8 +181,28 @@ tr        // uniform_buffer_typeid   = typeid_of(Uniform_Buffer_Object),
     return true
 }
 
+blue : f32 = 0
+
 loop :: proc() {
     debug.profile_scope()
+    
+    // // Blue pulse over time
+    // blue += 0.5 * delta_time
+    // blue = math.wrap(blue, 1)
+    // cg.set_clear_color({0, 0, blue, 1})
+    // // ////////////////////
+
+    cg.cmd_begin_graphics()
+    cg.cmd_begin_render_pass()
+    
+    cg.cmd_bind_shader(tri_shader)
+    cg.cmd_draw({})
+
+    cg.cmd_end_render_pass()
+    cg.cmd_end_graphics()
+    cg.cmd_submit_graphics()
+
+    cg.cmd_present()
 
     // geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
 
