@@ -74,7 +74,7 @@ run_app :: proc() -> (ok: bool) {
         // "resources/test/LanternPole_Lantern.gali",
     }
 
-    mesh_assets := make([]asset.Mesh, 3)
+    mesh_assets := make([]asset.Mesh, len(mesh_paths))
     defer delete(mesh_assets)
 
     for mesh_path, i in mesh_paths {
@@ -92,19 +92,19 @@ run_app :: proc() -> (ok: bool) {
 
     
     // Create renderable meshes
-    // ////////////////////////
-    // geo_meshes = make([]cg.Mesh, len(mesh_assets))
-    // defer delete(geo_meshes)
-    //
-    // for _, i in mesh_assets {
-    //     mesh_asset := &mesh_assets[i]
-    //     geo_meshes[i] = cg.create_static_mesh(mesh_asset) or_return
-    // }
-    // defer {
-    //     for geo_mesh in geo_meshes {
-    //         cg.destroy_static_mesh(geo_mesh)
-    //     }
-    // }
+    ////////////////////////
+    geo_meshes = make([]cg.Mesh, len(mesh_assets))
+    defer delete(geo_meshes)
+
+    for _, i in mesh_assets {
+        mesh_asset := &mesh_assets[i]
+        geo_meshes[i] = cg.create_static_mesh(mesh_asset) or_return
+    }
+    defer {
+        for geo_mesh in geo_meshes {
+            cg.destroy_static_mesh(geo_mesh)
+        }
+    }
     // ////////////////////////
 
 
@@ -196,7 +196,10 @@ loop :: proc() {
     cg.cmd_begin_render_pass()
     
     cg.cmd_bind_shader(tri_shader)
-    cg.cmd_draw({})
+
+    for mesh in geo_meshes {
+        cg.cmd_draw_mesh(mesh)
+    }
 
     cg.cmd_end_render_pass()
     cg.cmd_end_graphics()
