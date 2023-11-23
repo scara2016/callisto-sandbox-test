@@ -19,16 +19,10 @@ delta_time: f32 = {}
 delta_time_f64: f64 = {}
 // ================
 
-Uniform_Buffer_Object :: struct {
-    model   : linalg.Matrix4x4f32,
-    view    : linalg.Matrix4x4f32,
-    proj    : linalg.Matrix4x4f32,
-}
-
-geo_uniform_data : Uniform_Buffer_Object = {
-    model = linalg.MATRIX4F32_IDENTITY,
-    view = linalg.MATRIX4F32_IDENTITY,
-    proj = linalg.MATRIX4F32_IDENTITY,
+render_pass_uniform_data : cg.Render_Pass_Uniforms = {
+    view        = cal.MAT4_IDENTITY,
+    proj        = cal.MAT4_IDENTITY,
+    viewproj    = cal.MAT4_IDENTITY,
 }
 
 engine              : cal.Engine_Context
@@ -37,7 +31,7 @@ geo_meshes          : []cg.Mesh
 // matcap_shader       : cg.Shader
 // matcap_material     : cg.Material
 // matcap_texture      : cg.Texture
-tri_shader          : cg.Shader
+opaque_shader       :cg.Shader
 
 main :: proc(){
     
@@ -141,17 +135,29 @@ run_app :: proc() -> (ok: bool) {
     // cg.set_material_texture(matcap_material, matcap_texture, 1)
     
 
-    tri_shader_desc := cg.Shader_Description {
-        vertex_shader_data = #load("callisto/resources/shaders/triangle.vert.spv"),
-        fragment_shader_data = #load("callisto/resources/shaders/triangle.frag.spv"),
-        // cull_mode = .NONE,
-    }
+    // tri_shader_desc := cg.Shader_Description {
+    //     vertex_shader_data = #load("callisto/resources/shaders/triangle.vert.spv"),
+    //     fragment_shader_data = #load("callisto/resources/shaders/triangle.frag.spv"),
+    //     // cull_mode = .NONE,
+    // }
+    // tri_shader = cg.create_shader(&tri_shader_desc) or_return
+    // defer {
+    //     cg.wait_until_idle()
+    //     cg.destroy_shader(tri_shader)
+    // }
 
-    tri_shader = cg.create_shader(&tri_shader_desc) or_return
+    opaque_shader_desc := cg.Shader_Description {
+        // material_uniforms_typeid    = typeid_of(Uniform_Buffer_Object),
+        vertex_shader_data          = #load("callisto/resources/shaders/opaque.vert.spv"),
+        fragment_shader_data        = #load("callisto/resources/shaders/opaque.frag.spv"),
+        // cull_mode                   = .NONE,
+    }
+    opaque_shader = cg.create_shader(&opaque_shader_desc) or_return
     defer {
         cg.wait_until_idle()
-        cg.destroy_shader(tri_shader)
+        cg.destroy_shader(opaque_shader)
     }
+
     // /////////////////////////
 
 
@@ -160,8 +166,9 @@ run_app :: proc() -> (ok: bool) {
     camera_transform := linalg.matrix4_translate_f32({0, 0, -10})
 
     aspect_ratio := f32(config.WINDOW_WIDTH) / f32(config.WINDOW_HEIGHT)
-    geo_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.to_radians(f32(-40)), aspect_ratio, 0.1, 10000, false)
-    geo_uniform_data.view = linalg.matrix4_inverse_f32(camera_transform)
+    render_pass_uniform_data.view = linalg.matrix4_inverse_f32(camera_transform)
+    render_pass_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.to_radians(f32(50)), aspect_ratio, 0.1, 10000, false)
+    render_pass_uniform_data.viewproj = render_pass_uniform_data.view * render_pass_uniform_data.proj
     // /////////////
 
 
@@ -186,39 +193,38 @@ blue : f32 = 0
 loop :: proc() {
     debug.profile_scope()
     
-    // // Blue pulse over time
-    // blue += 0.5 * delta_time
-    // blue = math.wrap(blue, 1)
-    // cg.set_clear_color({0, 0, blue, 1})
-    // // ////////////////////
+    // Blue pulse over time
+    blue += 0.5 * delta_time
+    blue = math.wrap(blue, 1)
+    cg.set_clear_color({0, 0, blue, 1})
+    // ////////////////////
+    
+    // geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
+
+    // cg.upload_uniforms_material(matcap_material, &geo_uniform_data)
+
+    cg.upload_uniforms_render_pass(/*render_pass,*/ &render_pass_uniform_data)
 
     cg.cmd_begin_graphics()
+    cg.cmd_bind_uniforms_render_pass(/*render_pass*/)
     cg.cmd_begin_render_pass()
     
-    cg.cmd_bind_shader(tri_shader)
+        // cg.cmd_bind_uniforms_material()
+        cg.cmd_bind_shader(opaque_shader)
 
-    for mesh in geo_meshes {
-        cg.cmd_draw_mesh(mesh)
-    }
+        for mesh in geo_meshes {
+            // cg.cmd_bind_uniforms_instance() // Should only be called internally once models/mats are implemented
+            cg.cmd_draw_mesh(mesh)
+        }
 
     cg.cmd_end_render_pass()
     cg.cmd_end_graphics()
+
     cg.cmd_submit_graphics()
 
     cg.cmd_present()
 
-    // geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
-
-    // cg.upload_material_uniforms(matcap_material, &geo_uniform_data)
     // 
-    // cg.cmd_record()
-    // cg.cmd_begin_render_pass()
-    // cg.cmd_bind_material(matcap_material)
-    // for geo_mesh in geo_meshes {
-    //     cg.cmd_draw(geo_mesh)
-    // }
-    // cg.cmd_end_render_pass()
-    // cg.cmd_present()
     // log.infof("{:2.6f} : {:i}fps", delta_time, int(1 / delta_time))
     // log.info(input.get_key(.Space))
 
