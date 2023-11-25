@@ -150,7 +150,10 @@ run_app :: proc() -> (ok: bool) {
         // material_uniforms_typeid    = typeid_of(Uniform_Buffer_Object),
         vertex_shader_data          = #load("callisto/resources/shaders/opaque.vert.spv"),
         fragment_shader_data        = #load("callisto/resources/shaders/opaque.frag.spv"),
-        // cull_mode                   = .NONE,
+        // cull_mode                   = .None,
+        depth_test                  = true,
+        depth_write                 = true,
+        depth_compare_op            = .Less,
     }
     opaque_shader = cg.create_shader(&opaque_shader_desc) or_return
     defer {
