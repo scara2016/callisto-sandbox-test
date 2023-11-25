@@ -168,7 +168,7 @@ run_app :: proc() -> (ok: bool) {
     aspect_ratio := f32(config.WINDOW_WIDTH) / f32(config.WINDOW_HEIGHT)
     render_pass_uniform_data.view = linalg.matrix4_inverse_f32(camera_transform)
     render_pass_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.to_radians(f32(50)), aspect_ratio, 0.1, 10000, false)
-    render_pass_uniform_data.viewproj = render_pass_uniform_data.view * render_pass_uniform_data.proj
+    render_pass_uniform_data.viewproj = render_pass_uniform_data.proj * render_pass_uniform_data.view
     // /////////////
 
 
@@ -193,11 +193,11 @@ blue : f32 = 0
 loop :: proc() {
     debug.profile_scope()
     
-    // Blue pulse over time
-    blue += 0.5 * delta_time
-    blue = math.wrap(blue, 1)
-    cg.set_clear_color({0, 0, blue, 1})
-    // ////////////////////
+    // // Blue pulse over time
+    // blue += 0.5 * delta_time
+    // blue = math.wrap(blue, 1)
+    // cg.set_clear_color({0, 0, blue, 1})
+    // // ////////////////////
     
     // geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
 
