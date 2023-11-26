@@ -19,11 +19,13 @@ delta_time: f32 = {}
 delta_time_f64: f64 = {}
 // ================
 
-render_pass_uniform_data : cg.Render_Pass_Uniforms = {
+render_pass_uniform_data := cg.Render_Pass_Uniforms {
     view        = cal.MAT4_IDENTITY,
     proj        = cal.MAT4_IDENTITY,
     viewproj    = cal.MAT4_IDENTITY,
 }
+
+instance_uniform_data : cg.Instance_Uniforms
 
 engine              : cal.Engine_Context
 
@@ -62,6 +64,7 @@ run_app :: proc() -> (ok: bool) {
     // Load mesh assets
     // ////////////////
     mesh_paths := []string {
+        "resources/test/z-up-basis.gali",
         "resources/test/Suzanne.gali",
         // "resources/test/LanternPole_Body.gali",
         // "resources/test/LanternPole_Chain.gali",
@@ -146,15 +149,18 @@ run_app :: proc() -> (ok: bool) {
     //     cg.destroy_shader(tri_shader)
     // }
 
+    vert_data := os.read_entire_file_from_filename("callisto/resources/shaders/opaque.vert.spv") or_return
+    frag_data := os.read_entire_file_from_filename("callisto/resources/shaders/opaque.frag.spv") or_return
+
     opaque_shader_desc := cg.Shader_Description {
-        // material_uniforms_typeid    = typeid_of(Uniform_Buffer_Object),
-        vertex_shader_data          = #load("callisto/resources/shaders/opaque.vert.spv"),
-        fragment_shader_data        = #load("callisto/resources/shaders/opaque.frag.spv"),
-        // cull_mode                   = .None,
+        vertex_shader_data          = vert_data,
+        fragment_shader_data        = frag_data,
+        cull_mode                   = .Back,
         depth_test                  = true,
         depth_write                 = true,
         depth_compare_op            = .Less,
     }
+
     opaque_shader = cg.create_shader(&opaque_shader_desc) or_return
     defer {
         cg.wait_until_idle()
@@ -166,13 +172,17 @@ run_app :: proc() -> (ok: bool) {
 
     // Create camera
     // /////////////
-    camera_transform := linalg.matrix4_translate_f32({0, 0, -10})
-    camera_transform *= linalg.matrix4_rotate_f32(linalg.to_radians(f32(180)), {0, 1, 0})
 
+    t := linalg.matrix4_translate_f32({0, -10, 0})
+    r := linalg.matrix4_rotate_f32(delta_time, {0, 0, 1}) 
+    
     aspect_ratio := f32(config.WINDOW_WIDTH) / f32(config.WINDOW_HEIGHT)
-    render_pass_uniform_data.view = linalg.matrix4_inverse_f32(camera_transform) * cg.VIEW_BASIS_MATRIX
-    render_pass_uniform_data.proj = linalg.matrix4_perspective_f32(linalg.to_radians(f32(50)), aspect_ratio, 0.1, 10000)
+
+    render_pass_uniform_data.view = linalg.matrix4_inverse_f32(t)
+    // render_pass_uniform_data.proj = cg.matrix4_orthographic(4, aspect_ratio, 0.1, 100)
+    render_pass_uniform_data.proj = cg.matrix4_perspective(linalg.RAD_PER_DEG * 50, aspect_ratio, 0.1, 100)
     render_pass_uniform_data.viewproj = render_pass_uniform_data.proj * render_pass_uniform_data.view
+    
     // /////////////
 
 
@@ -192,33 +202,26 @@ run_app :: proc() -> (ok: bool) {
     return true
 }
 
-blue : f32 = 0
+spin := 0
 
 loop :: proc() {
     debug.profile_scope()
     
-    // // Blue pulse over time
-    // blue += 0.5 * delta_time
-    // blue = math.wrap(blue, 1)
-    // cg.set_clear_color({0, 0, blue, 1})
-    // // ////////////////////
-
-    
-    // geo_uniform_data.model *= linalg.matrix4_rotate_f32(delta_time, linalg.VECTOR3F32_Y_AXIS)
 
     // cg.upload_uniforms_material(matcap_material, &geo_uniform_data)
 
     cg.upload_uniforms_render_pass(/*render_pass,*/ &render_pass_uniform_data)
 
+
     cg.cmd_begin_graphics()
     cg.cmd_bind_uniforms_render_pass(/*render_pass*/)
     cg.cmd_begin_render_pass()
     
-        // cg.cmd_bind_uniforms_material()
         cg.cmd_bind_shader(opaque_shader)
+        // cg.cmd_bind_uniforms_material()
 
-        for mesh in geo_meshes {
-            // cg.cmd_bind_uniforms_instance() // Should only be called internally once models/mats are implemented
+        for mesh, i in geo_meshes {
+            // cg.cmd_bind_uniforms_instance(/*gpu_transform_handle*/) // Should only be called internally once models/mats are implemented
             cg.cmd_draw_mesh(mesh)
         }
 
